@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Poubelles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/notie@4.3.0/dist/notie.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notie@4.3.0/dist/notie.min.css">
+</head>
+
+
+<body class="bg-black min-h-screen flex items-center justify-center font-inter">
+    <div class="w-full max-w-md bg-zinc-900/90 rounded-2xl shadow-2xl border border-orange-500/20 p-10 transform transition-all duration-300 hover:scale-105">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600 mb-4">
+                Connexion
+            </h1>
+            <p class="text-gray-300">Connectez-vous à votre espace de gestion</p>
+        </div>
+
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <input 
+                    type="text" 
+                    id="pseudo" 
+                    class="w-full px-4 py-3 bg-black/50 border border-orange-500/20 rounded-lg text-white 
+                    placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+                    transition duration-300" 
+                    placeholder="Pseudo" 
+                    required
+                >
+            </div>
+            <div>
+                <input 
+                    type="password" 
+                    id="password" 
+                    class="w-full px-4 py-3 bg-black/50 border border-orange-500/20 rounded-lg text-white 
+                    placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+                    transition duration-300" 
+                    placeholder="Mot de passe" 
+                    required
+                >
+            </div>
+            <div class="text-center">
+                <button 
+                    type="submit" 
+                    class="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3 rounded-lg 
+                    shadow-lg hover:opacity-90 transition duration-300 transform active:scale-95"
+                >
+                    Se connecter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                window.location.href = '/dashboard';
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const response = await fetch('http://localhost:1337/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    pseudo: document.getElementById('pseudo').value,
+                    mot_de_passe: document.getElementById('password').value 
+                }),
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('isLoggedIn', 'true');
+                window.location.href = '/';
+            } else {
+                notie.alert({ type: 3, text: data.error || 'Erreur inconnue.', time: 3, position: 'bottom' });
+            }
+        });
+
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            const response = await fetch(url, { ...defaultOptions, ...options });
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            
+            return response;
+        }
+    </script>
+</body>
+</html>

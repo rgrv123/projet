@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Mode Admin - Poubelles</title>
+   <script src="https://cdn.tailwindcss.com"></script>
+   <script src="https://cdn.jsdelivr.net/npm/notie@4.3.0/dist/notie.min.js"></script>
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notie@4.3.0/dist/notie.min.css">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<style>
+#mainContent {
+    display: none; /* Cache le contenu jusqu'à validation */
+}
+
+#loadingScreen {
+    position: fixed;
+    inset: 0;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+</style>
+
+<body class="bg-black min-h-screen text-white font-inter">
+    <div id="loadingScreen">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-orange-500"></div>
+    </div>
+   <div class="flex">
+       <!-- Sidebar -->
+       <div class="w-64 h-screen bg-zinc-900 border-r border-orange-500/20 fixed">
+           <div class="p-6">
+               <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
+                   Mode Admin
+               </h1>
+               <div class="mt-8 space-y-6">
+                   <!-- Navigation -->
+                   <button onclick="window.location.href='/'" class="w-full flex items-center p-3 rounded-lg hover:bg-orange-500/10 transition duration-300">
+                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5 mr-3">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16M5 12l7-7 7 7"></path>
+                       </svg>
+                       <span>Accueil</span>
+                   </button>
+                   <button onclick="showUsers()" class="w-full flex items-center p-3 rounded-lg hover:bg-orange-500/10 transition duration-300">
+                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5 mr-3">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h10M7 16h10"></path>
+                       </svg>
+                       <span>Gestion Utilisateurs</span>
+                   </button>
+                   <button onclick="showStats()" class="w-full flex items-center p-3 rounded-lg hover:bg-orange-500/10 transition duration-300">
+                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5 mr-3">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l4 4 8-8 4 4M3 13l4-4 8 8 4-4"></path>
+                       </svg>
+                       <span>Statistiques</span>
+                   </button>
+               </div>
+           </div>
+       </div>
+
+       <!-- Main Content -->
+       <div class="flex-1 ml-64 p-8">
+           <div class="flex justify-between items-center mb-8">
+               <h2 class="text-3xl font-bold text-orange-500">Gestion Admin</h2>
+
+               
+               <div class="flex items-center gap-4">
+                   <span id="userName" class="text-gray-300"></span>
+                   <button onclick="logout()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
+                       Déconnexion
+                   </button>
+               </div>
+           </div>
+
+           <!-- Gestion des Utilisateurs -->
+           <div id="userManagement" class="hidden">
+               <div class="bg-zinc-900/90 rounded-xl p-6 border border-orange-500/20 shadow-2xl mb-6">
+                   <h3 class="text-xl font-bold mb-4 text-center text-orange-400">Gestion des Utilisateurs</h3>
+                   <div class="mb-4">
+                       <input type="text" id="username" placeholder="Pseudo de l'utilisateur" 
+                           class="w-full p-3 rounded-lg bg-black/50 border border-orange-500/20 text-white placeholder-gray-400 
+                           focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                   </div>
+                   <div class="grid grid-cols-2 gap-4 mb-4">
+                       <select id="quartier1" class="p-3 rounded-lg bg-black/50 border border-orange-500/20 text-white focus:ring-2 focus:ring-orange-500">
+                           <option value="0">Quartier 1 - Aucun accès</option>
+                           <option value="1">Quartier 1 - Accès</option>
+                       </select>
+                       <select id="quartier2" class="p-3 rounded-lg bg-black/50 border border-orange-500/20 text-white focus:ring-2 focus:ring-orange-500">
+                           <option value="0">Quartier 2 - Aucun accès</option>
+                           <option value="1">Quartier 2 - Accès</option>
+                       </select>
+                   </div>
+                   <div class="flex gap-6 justify-center">
+                       <button onclick="getPermissions()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200 transform hover:scale-105">
+                           Voir Permissions
+                       </button>
+                       <button onclick="modifyPermissions()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200 transform hover:scale-105">
+                           Modifier Permissions
+                       </button>
+                   </div>
+               </div>
+           </div>
+
+           <!-- Statistiques -->
+           <div id="statsSection" class="hidden">
+               <div class="bg-zinc-900/90 rounded-xl p-6 border border-orange-500/20 shadow-2xl mb-6">
+                   <h3 class="text-xl font-bold mb-4 text-center text-orange-400">Statistiques Globales</h3>
+                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+                       <div class="bg-black/50 rounded-xl p-6 border border-orange-500/20 shadow-2xl">
+                           <h4 class="text-gray-400 text-sm">Total Poubelles</h4>
+                           <div class="text-3xl font-bold mt-2 text-orange-400" id="totalBins">-</div>
+                       </div>
+                       <div class="bg-black/50 rounded-xl p-6 border border-orange-500/20 shadow-2xl">
+                           <h4 class="text-gray-400 text-sm">Température Moyenne</h4>
+                           <div class="text-3xl font-bold mt-2 text-orange-400" id="avgTemp">-</div>
+                       </div>
+                       <div class="bg-black/50 rounded-xl p-6 border border-orange-500/20 shadow-2xl">
+                           <h4 class="text-gray-400 text-sm">Volume Moyen</h4>
+                           <div class="text-3xl font-bold mt-2 text-orange-400" id="avgVolume">-</div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+   </div>
+
+   <script>
+       async function fetchWithAuth(url, options = {}) {
+           const token = localStorage.getItem('token');
+           if (!token) {
+               window.location.href = '/login';
+               return;
+           }
+
+           const defaultOptions = {
+               headers: {
+                   'Authorization': `Bearer ${token}`,
+                   'Content-Type': 'application/json',
+               }
+           };
+
+           const response = await fetch(url, { ...defaultOptions, ...options });
+           
+           if (response.status === 401) {
+               localStorage.removeItem('token');
+               localStorage.removeItem('isLoggedIn');
+               localStorage.removeItem('user');
+               window.location.href = '/login';
+               return;
+           }
+
+           return response;
+       }
+
+       async function showStats() {
+           document.getElementById('statsSection').classList.remove('hidden');
+           document.getElementById('userManagement').classList.add('hidden');
+   
+           try {
+               const response = await fetchWithAuth('http://localhost:1337/api/get_poubelles');
+               const poubelles = await response.json();
+   
+               if (poubelles.error) {
+                   notie.alert({ type: 3, text: 'Erreur lors de la récupération des poubelles', time: 3, position: 'bottom' });
+                   return;
+               }
+   
+               const total = poubelles.length;
+               if (total === 0) {
+                   notie.alert({ type: 3, text: 'Aucune poubelle trouvée', time: 3, position: 'bottom' });
+                   return;
+               }
+   
+               const avgTemp = poubelles.reduce((acc, bin) => acc + bin.temperature, 0) / total;
+               const avgVolume = poubelles.reduce((acc, bin) => acc + bin.volume, 0) / total;
+               const totalPoids = poubelles.reduce((acc, bin) => acc + bin.poids, 0);
+   
+               const statsSection = document.getElementById('statsSection');
+               statsSection.innerHTML = `
+                   <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-2xl mb-6">
+                       <h3 class="text-xl font-bold mb-4 text-center">Statistiques Globales</h3>
+                       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+                           <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-2xl">
+                               <h4 class="text-gray-400 text-sm">Température Moyenne</h4>
+                               <div class="text-3xl font-bold mt-2">${avgTemp.toFixed(2)} °C</div>
+                           </div>
+                           <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-2xl">
+                               <h4 class="text-gray-400 text-sm">Volume Moyen</h4>
+                               <div class="text-3xl font-bold mt-2">${avgVolume.toFixed(2)} L</div>
+                           </div>
+                           <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-2xl">
+                               <h4 class="text-gray-400 text-sm">Poids Total</h4>
+                               <div class="text-3xl font-bold mt-2">${totalPoids.toFixed(2)} kg</div>
+                           </div>
+                       </div>
+                   </div>
+               `;
+           } catch (error) {
+               notie.alert({ type: 3, text: 'Erreur lors de la récupération', time: 3, position: 'bottom' });
+           }
+       }
+
+       function showUsers() {
+           document.getElementById('statsSection').classList.add('hidden');
+           document.getElementById('userManagement').classList.remove('hidden');
+       }
+       
+       async function getPermissions() {
+           const username = document.getElementById('username').value;
+           if (!username) {
+               notie.alert({ type: 3, text: 'Veuillez entrer un pseudo', time: 3, position: 'bottom' });
+               return;
+           }
+
+           try {
+               const response = await fetchWithAuth(`http://localhost:1337/api/get_user_data/${username}`);
+               const data = await response.json();
+               if (data.error) {
+                   notie.alert({ type: 3, text: 'Utilisateur non trouvé', time: 3, position: 'bottom' });
+                   return;
+               }
+
+               document.getElementById('quartier1').value = data.q1;
+               document.getElementById('quartier2').value = data.q2;
+               notie.alert({ type: 1, text: 'Permissions récupérées', time: 2, position: 'bottom' });
+           } catch (error) {
+               notie.alert({ type: 3, text: 'Erreur lors de la récupération', time: 3, position: 'bottom' });
+           }
+       }
+
+       async function modifyPermissions() {
+           const username = document.getElementById('username').value;
+           const q1 = document.getElementById('quartier1').value;
+           const q2 = document.getElementById('quartier2').value;
+
+           if (!username || !q1 || !q2) {
+               notie.alert({ type: 3, text: 'Veuillez remplir tous les champs', time: 3, position: 'bottom' });
+               return;
+           }
+
+           try {
+               const response = await fetchWithAuth(`http://localhost:1337/api/update_user_data/${username}`, {
+                   method: 'POST',
+                   body: JSON.stringify({ q1, q2 })
+               });
+
+               const data = await response.json();
+               if (data.message) {
+                   notie.alert({ type: 1, text: 'Permissions modifiées', time: 2, position: 'bottom' });
+               } else {
+                   notie.alert({ type: 3, text: data.error, time: 3, position: 'bottom' });
+               }
+           } catch (error) {
+               notie.alert({ type: 3, text: 'Erreur lors de la modification', time: 3, position: 'bottom' });
+           }
+       }
+
+       async function logout() {
+           try {
+               await fetchWithAuth('http://localhost:1337/api/logout', { method: 'POST' });
+           } catch (error) {
+               console.error(error);
+           } finally {
+               localStorage.removeItem('token');
+               localStorage.removeItem('isLoggedIn');
+               window.location.href = '/login';
+           }
+       }
+
+// Ajout de la fonction pour récupérer l'utilisateur via le token
+async function getUserByToken() {
+    try {
+        const response = await fetchWithAuth('http://localhost:1337/api/get_user_by_token');
+        const data = await response.json();
+        return data; // On retourne directement l'objet utilisateur
+    } catch (error) {
+        console.error('Erreur:', error);
+        return null;
+    }
+}
+
+window.onload = async function () {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+
+    const user = await getUserByToken();
+    
+    if (!user || user.pseudo !== "Admin") {
+        window.location.href = '/dashboard';
+        return;
+    }
+
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+};
+
+
+
+   </script>
+</body>
+</html>

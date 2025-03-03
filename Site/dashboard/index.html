@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gestion des Poubelles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notie@4.3.0/dist/notie.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notie@4.3.0/dist/notie.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { 
+            background-color: black; 
+        }
+        
+        #mainContent { 
+            display: none; 
+        }
+        
+        #loadingScreen {
+            position: fixed;
+            inset: 0;
+            background: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(249, 115, 22, 0.2);
+        }
+
+        .stats-card {
+            background: rgba(24, 24, 27, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stats-card:hover {
+            border-color: rgba(249, 115, 22, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .glass-effect {
+            background: rgba(24, 24, 27, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .chart-container {
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: scale(1.01);
+        }
+
+        .quick-stats {
+            transition: all 0.3s ease;
+        }
+
+        .quick-stats:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body class="bg-black text-white font-inter">
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-orange-500"></div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notifications" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <div id="mainContent" class="flex">
+        <!-- Sidebar -->
+        <div class="w-64 h-screen glass-effect fixed border-r border-orange-500/20">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
+                    Tableau de bord
+                </h1>
+
+                <!-- Navigation Menu -->
+                <div class="mt-8 space-y-4">
+                    <!-- Vue d'ensemble -->
+                    <button onclick="showDashboard()" class="w-full flex items-center p-3 rounded-lg hover:bg-orange-500/10 transition duration-300">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/>
+                        </svg>
+                        Vue d'ensemble
+                    </button>
+
+                    <!-- Quartiers Menu -->
+                    <div class="space-y-2" id="quartiersContainer">
+                        <button onclick="toggleDropdown('quartiersMenu')" class="w-full flex items-center justify-between p-3 rounded-lg hover:bg-orange-500/10 transition duration-300">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                </svg>
+                                Quartiers
+                            </div>
+                            <svg id="quartiersArrow" class="w-4 h-4 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div id="quartiersMenu" class="hidden pl-4 space-y-2"></div>
+                    </div>
+
+                    <!-- Admin Section -->
+                    <div id="adminMenu" class="hidden">
+                        <button onclick="window.location.href = '/admin'" class="w-full flex items-center p-3 rounded-lg hover:bg-orange-500/10 transition duration-300 text-orange-400">
+                            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                            </svg>
+                            Mode Admin
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Button -->
+            <div class="absolute bottom-0 left-0 w-full p-6">
+                <button onclick="window.location.href = '/settings'" class="w-full flex items-center p-3 rounded-lg hover:bg-orange-500/10 transition duration-300">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Paramètres
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 ml-64 p-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600" id="pageTitle">
+                        Vue d'ensemble
+                    </h2>
+                    <p class="text-gray-400 mt-1" id="pageSubtitle">Dashboard en temps réel</p>
+                </div>
+
+                <!-- User Actions -->
+                <div class="flex items-center gap-4">
+                    <!-- User Info -->
+                    <div class="glass-effect rounded-lg px-4 py-2">
+                        <span id="userName" class="text-gray-300"></span>
+                    </div>
+                    
+                    <!-- Notification Center -->
+                    <div class="relative">
+                        <button id="notificationBtn" class="p-2 rounded-full hover:bg-orange-500/10 transition-colors relative">
+                            <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                            </svg>
+                            <span id="notifCount" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                        </button>
+                        <div id="notificationPanel" class="hidden absolute right-0 mt-2 w-96 max-h-[80vh] overflow-y-auto rounded-lg shadow-lg bg-zinc-900 border border-orange-500/20 z-50">
+                            <div class="p-4 border-b border-orange-500/20">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-lg font-semibold text-orange-500">Notifications</h3>
+                                    <button id="markAllRead" class="text-sm text-orange-400 hover:text-orange-300">
+                                        Tout marquer comme lu
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="notificationList" class="divide-y divide-orange-500/10">
+                                <p class="p-4 text-center text-gray-400">Aucune notification</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logout Button -->
+                    <button onclick="logout()" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition transform hover:scale-105">
+                        Déconnexion
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="stats-card rounded-xl p-6 quick-stats">
+                    <h3 class="text-gray-400 text-sm">Total Poubelles</h3>
+                    <p class="text-2xl font-bold text-orange-500 mt-2" id="totalBins">-</p>
+                </div>
+                <div class="stats-card rounded-xl p-6 quick-stats">
+                    <h3 class="text-gray-400 text-sm">Température Moyenne</h3>
+                    <p class="text-2xl font-bold text-orange-500 mt-2" id="avgTemp">-</p>
+                </div>
+                <div class="stats-card rounded-xl p-6 quick-stats">
+                    <h3 class="text-gray-400 text-sm">Volume Moyen</h3>
+                    <p class="text-2xl font-bold text-orange-500 mt-2" id="avgVolume">-</p>
+                </div>
+                <div class="stats-card rounded-xl p-6 quick-stats">
+                    <h3 class="text-gray-400 text-sm">Poids Total</h3>
+                    <p class="text-2xl font-bold text-orange-500 mt-2" id="totalWeight">-</p>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="glass-effect rounded-xl p-6 chart-container">
+                <h3 class="text-xl font-semibold mb-4 text-orange-400">Statistiques des Poubelles</h3>
+                <div class="h-64 relative">
+                    <canvas id="mainChart"></canvas>
+                </div>
+            </div>
+            <br>
+
+            <!-- Dashboard Content -->
+            <div id="dashboardContent" class="glass-effect rounded-xl p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="stats-card rounded-xl p-6">
+                        <h4 class="font-semibold mb-2 text-orange-400">Visualisation par quartier</h4>
+                        <p class="text-sm text-gray-400">Accédez aux données des poubelles en temps réel par quartier</p>
+                    </div>
+                    <div class="stats-card rounded-xl p-6">
+                        <h4 class="font-semibold mb-2 text-orange-400">Surveillance des niveaux</h4>
+                        <p class="text-sm text-gray-400">Suivez le remplissage, la température et le poids des poubelles</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-effect rounded-xl p-6 hidden" id="binListSection">
+                <h3 class="text-xl font-bold mb-4 text-orange-400" id="binListTitle">Liste des Poubelles</h3>
+                <div class="space-y-4" id="binsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:1337/api';
+        let chart = null;
+        let notifications = [];
+        let unreadCount = 0;
+
+        async function init() {
+            if (!localStorage.getItem('token')) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const userData = await getUserByToken();
+            if (!userData?.pseudo) {
+                window.location.href = '/login';
+                return;
+            }
+
+            document.getElementById('userName').textContent = userData.pseudo;
+            if (userData.pseudo === 'Admin') {
+                document.getElementById('adminMenu').classList.remove('hidden');
+            }
+
+            await loadQuartiers();
+            await initializeStats();
+            await initializeCharts();
+            startRealTimeUpdates();
+
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+        }
+
+        // Système de notifications
+        function addNotification(title, message, type = 'info') {
+            const notification = {
+                id: Date.now(),
+                title,
+                message,
+                type,
+                timestamp: new Date(),
+                read: false
+            };
+
+            notifications.unshift(notification);
+            if (notifications.length > 50) notifications.pop();
+            
+            unreadCount++;
+            updateNotificationUI();
+        }
+
+        function updateNotificationUI() {
+            const countElement = document.getElementById('notifCount');
+            const listElement = document.getElementById('notificationList');
+            
+            if (unreadCount > 0) {
+                countElement.textContent = unreadCount;
+                countElement.classList.remove('hidden');
+            } else {
+                countElement.classList.add('hidden');
+            }
+
+            if (notifications.length === 0) {
+                listElement.innerHTML = '<p class="p-4 text-center text-gray-400">Aucune notification</p>';
+                return;
+            }
+
+            listElement.innerHTML = notifications.map(notif => `
+                <div class="p-4 ${notif.read ? 'bg-zinc-900' : 'bg-orange-500/5'} hover:bg-zinc-800 transition-colors">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-orange-400">${notif.title}</h4>
+                            <p class="text-sm text-gray-300 mt-1">${notif.message}</p>
+                            <p class="text-xs text-gray-400 mt-1">${new Date(notif.timestamp).toLocaleString()}</p>
+                        </div>
+                        <button onclick="deleteNotification(${notif.id})" class="text-gray-400 hover:text-gray-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteNotification(id) {
+            const index = notifications.findIndex(n => n.id === id);
+            if (index !== -1) {
+                if (!notifications[index].read) unreadCount--;
+                notifications.splice(index, 1);
+                updateNotificationUI();
+            }
+        }
+
+        function markAllAsRead() {
+            notifications.forEach(n => n.read = true);
+            unreadCount = 0;
+            updateNotificationUI();
+        }
+
+        async function checkBinsStatus() {
+            try {
+                const response = await fetchWithAuth(`${API_URL}/get_poubelles`);
+                const bins = await response.json();
+                const authorizedQuartiers = await getAuthorizedQuartiers();
+                
+                const authorizedBins = bins.filter(bin => 
+                    authorizedQuartiers.includes(Number(bin.id_quartier))
+                );
+
+                authorizedBins.forEach(bin => {
+                    if (bin.temperature > 40) {
+                        addNotification(
+                            'Alerte Température',
+                            `La poubelle #${bin.id_poubelle} a dépassé 40°C (${bin.temperature}°C)`,
+                            'warning'
+                        );
+                    }
+                    if (bin.volume > 70) {
+                        addNotification(
+                            'Alerte Volume',
+                            `La poubelle #${bin.id_poubelle} est presque pleine (${bin.volume}%)`,
+                            'error'
+                        );
+                    }
+                });
+            } catch (error) {
+                console.error('Erreur lors de la vérification des poubelles:', error);
+            }
+        }
+
+        async function fetchWithAuth(url, options = {}) {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            const response = await fetch(url, { ...defaultOptions, ...options });
+            
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = '/login';
+                return;
+            }
+
+            return response;
+        }
+
+        async function getUserByToken() {
+            try {
+                const response = await fetchWithAuth(`${API_URL}/get_user_by_token`);
+                return await response.json();
+            } catch (error) {
+                console.error('Erreur:', error);
+                return null;
+            }
+        }
+
+        async function loadQuartiers() {
+            try {
+                const userData = await getUserByToken();
+                if (!userData) return;
+
+                const userResponse = await fetchWithAuth(`${API_URL}/get_user_data/${userData.pseudo}`);
+                if (!userResponse.ok) return;
+
+                const userPermissions = await userResponse.json();
+                let authorizedQuartiers = [];
+
+                if (userPermissions.q1 === 1) authorizedQuartiers.push(1);
+                if (userPermissions.q2 === 1) authorizedQuartiers.push(2);
+
+                const quartiersResponse = await fetchWithAuth(`${API_URL}/get_quartiers`);
+                const quartiers = await quartiersResponse.json();
+
+                const filteredQuartiers = quartiers.filter(quartier =>
+                    authorizedQuartiers.includes(Number(quartier.id_quartier))
+                );
+
+                updateQuartiersMenu(filteredQuartiers);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function updateQuartiersMenu(quartiers) {
+            const menuContainer = document.getElementById('quartiersMenu');
+            menuContainer.innerHTML = quartiers.map(quartier => `
+                <button onclick="loadQuartierData(${quartier.id_quartier})" 
+                        class="w-full text-left p-2 rounded hover:bg-orange-500/10 transition duration-300">
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        </svg>
+                        ${quartier.nom}
+                    </div>
+                </button>
+            `).join('');
+        }
+
+        async function initializeStats() {
+            try {
+                const response = await fetchWithAuth(`${API_URL}/get_poubelles`);
+                const allPoubelles = await response.json();
+                const authorizedQuartiers = await getAuthorizedQuartiers();
+
+                const poubelles = allPoubelles.filter(bin => 
+                    authorizedQuartiers.includes(Number(bin.id_quartier))
+                );
+
+                updateStats(poubelles);
+            } catch (error) {
+                console.error('Erreur lors de l\'initialisation des statistiques:', error);
+            }
+        }
+
+        function updateStats(poubelles) {
+            const total = poubelles.length;
+            if (total === 0) {
+                document.getElementById('totalBins').textContent = '0';
+                document.getElementById('avgTemp').textContent = '0°C';
+                document.getElementById('avgVolume').textContent = '0%';
+                document.getElementById('totalWeight').textContent = '0kg';
+                return;
+            }
+
+            const avgTemp = poubelles.reduce((acc, bin) => acc + bin.temperature, 0) / total;
+            const avgVolume = poubelles.reduce((acc, bin) => acc + bin.volume, 0) / total;
+            const totalPoids = poubelles.reduce((acc, bin) => acc + bin.poids, 0);
+
+            document.getElementById('totalBins').textContent = total;
+            document.getElementById('avgTemp').textContent = `${avgTemp.toFixed(1)}°C`;
+            document.getElementById('avgVolume').textContent = `${avgVolume.toFixed(1)}%`;
+            document.getElementById('totalWeight').textContent = `${totalPoids.toFixed(1)}kg`;
+        }
+
+        async function getAuthorizedQuartiers() {
+            try {
+                const userData = await getUserByToken();
+                if (!userData) return [];
+
+                const userResponse = await fetchWithAuth(`${API_URL}/get_user_data/${userData.pseudo}`);
+                if (!userResponse.ok) return [];
+
+                const userPermissions = await userResponse.json();
+                let authorizedQuartiers = [];
+
+                if (userPermissions.q1 === 1) authorizedQuartiers.push(1);
+                if (userPermissions.q2 === 1) authorizedQuartiers.push(2);
+
+                return authorizedQuartiers;
+            } catch (error) {
+                console.error('Erreur:', error);
+                return [];
+            }
+        }
+
+        async function initializeCharts() {
+            try {
+                const response = await fetchWithAuth(`${API_URL}/get_poubelles`);
+                const allPoubelles = await response.json();
+                const authorizedQuartiers = await getAuthorizedQuartiers();
+
+                const poubelles = allPoubelles.filter(bin => 
+                    authorizedQuartiers.includes(Number(bin.id_quartier))
+                );
+
+                const limitedData = poubelles.slice(-10);
+
+                const ctx = document.getElementById('mainChart').getContext('2d');
+                
+                if (chart) {
+                    chart.destroy();
+                }
+
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: limitedData.map(bin => `Poubelle ${bin.id_poubelle}`),
+                        datasets: [{
+                            label: 'Volume (%)',
+                            data: limitedData.map(bin => bin.volume),
+                            backgroundColor: limitedData.map(bin => 
+                                bin.volume > 80 ? 'rgba(239, 68, 68, 0.7)' :
+                                bin.volume > 50 ? 'rgba(249, 115, 22, 0.7)' :
+                                'rgba(34, 197, 94, 0.7)'
+                            ),
+                            borderColor: limitedData.map(bin => 
+                                bin.volume > 80 ? 'rgb(239, 68, 68)' :
+                                bin.volume > 50 ? 'rgb(249, 115, 22)' :
+                                'rgb(34, 197, 94)'
+                            ),
+                            borderWidth: 1
+                        }, {
+                            label: 'Température (°C)',
+                            data: limitedData.map(bin => bin.temperature),
+                            backgroundColor: limitedData.map(bin => 
+                                bin.temperature > 40 ? 'rgba(234, 179, 8, 0.7)' :
+                                'rgba(52, 211, 153, 0.7)'
+                            ),
+                            borderColor: limitedData.map(bin => 
+                                bin.temperature > 40 ? 'rgb(234, 179, 8)' :
+                                'rgb(52, 211, 153)'
+                            ),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { 
+                                    color: 'white',
+                                    font: {
+                                        size: 14
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                titleColor: 'white',
+                                bodyColor: 'white'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: 'white',
+                                    stepSize: 10,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: 'white',
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeOutQuart'
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erreur lors de l\'initialisation des graphiques:', error);
+            }
+        }
+
+        function startRealTimeUpdates() {
+            setInterval(async () => {
+                await initializeStats();
+                await initializeCharts();
+                await checkBinsStatus();
+            }, 30000); // Mise à jour toutes les 30 secondes
+        }
+
+        async function loadQuartierData(quartierId) {
+            try {
+                const response = await fetchWithAuth(`${API_URL}/get_poubelles/${quartierId}`);
+                const poubelles = await response.json();
+
+                document.getElementById('pageTitle').textContent = `Quartier ${quartierId}`;
+                document.getElementById('pageSubtitle').textContent = `Vue détaillée des poubelles`;
+                document.getElementById('dashboardContent').classList.add('hidden');
+                document.getElementById('binListSection').classList.remove('hidden');
+
+                displayBins(poubelles);
+                toggleDropdown('quartiersMenu');
+            } catch (error) {
+                console.error(error);
+                addNotification('Erreur', 'Erreur lors du chargement des données du quartier', 'error');
+            }
+        }
+
+        function displayBins(bins) {
+            const container = document.getElementById('binsList');
+            container.innerHTML = '';
+
+            if (bins.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400">Aucune poubelle disponible dans ce quartier.</p>';
+                return;
+            }
+
+            bins.forEach(bin => {
+                const volumeColor = bin.volume > 80 ? 'text-red-500' : bin.volume > 50 ? 'text-orange-500' : 'text-green-500';
+                
+                const binElement = document.createElement('div');
+                binElement.className = 'glass-effect rounded-lg p-6 transition-all duration-300 hover:transform hover:scale-[1.02]';
+                binElement.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="space-y-1">
+                            <h4 class="text-xl font-bold">Poubelle #${bin.id_poubelle}</h4>
+                            <p class="text-gray-400 text-sm">ID Quartier: ${bin.id_quartier}</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-8">
+                            <div class="text-center">
+                                <p class="text-gray-400 text-sm">Volume</p>
+                                <p class="text-lg ${volumeColor} font-bold">${bin.volume}%</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-gray-400 text-sm">Température</p>
+                                <p class="text-lg text-yellow-500 font-bold">${bin.temperature}°C</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-gray-400 text-sm">Poids</p>
+                                <p class="text-lg text-blue-500 font-bold">${bin.poids} kg</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(binElement);
+            });
+        }
+
+        function toggleDropdown(id) {
+            const menu = document.getElementById(id);
+            const arrow = document.getElementById('quartiersArrow');
+            menu.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        async function logout() {
+            try {
+                await fetchWithAuth(`${API_URL}/logout`, { method: 'POST' });
+            } catch (error) {
+                console.error(error);
+            } finally {
+                localStorage.removeItem('token');
+                localStorage.removeItem('isLoggedIn');
+                window.location.href = '/login';
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('pageTitle').textContent = 'Dashboard';
+            document.getElementById('pageSubtitle').textContent = 'Vue d\'ensemble du système';
+            document.getElementById('binListSection').classList.add('hidden');
+            document.getElementById('dashboardContent').classList.remove('hidden');
+        }
+
+        // Configuration des écouteurs d'événements pour le panneau de notifications
+        document.addEventListener('DOMContentLoaded', function() {
+            const notifBtn = document.getElementById('notificationBtn');
+            const notifPanel = document.getElementById('notificationPanel');
+            const markAllReadBtn = document.getElementById('markAllRead');
+
+            notifBtn.addEventListener('click', () => {
+                notifPanel.classList.toggle('hidden');
+                if (!notifPanel.classList.contains('hidden')) {
+                    notifications.forEach(n => n.read = true);
+                    unreadCount = 0;
+                    updateNotificationUI();
+                }
+            });
+
+            markAllReadBtn.addEventListener('click', markAllAsRead);
+
+            // Fermer le panneau lors d'un clic à l'extérieur
+            document.addEventListener('click', (e) => {
+                if (!notifPanel.contains(e.target) && !notifBtn.contains(e.target)) {
+                    notifPanel.classList.add('hidden');
+                }
+            });
+        });
+
+        // Gestion des erreurs globales
+        window.addEventListener('error', function(e) {
+            console.error('Erreur globale:', e);
+            addNotification('Erreur système', 'Une erreur inattendue est survenue', 'error');
+        });
+
+        // Initialisation au chargement de la page
+        window.onload = init;
+    </script>
+</body>
+</html>

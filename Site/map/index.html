@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte des Poubelles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        #mainContent {
+            display: none; /* Cache le contenu jusqu'à validation */
+        }
+
+        #loadingScreen {
+            position: fixed;
+            inset: 0;
+            background: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        body {
+            background-color: black;
+        }
+
+        #map {
+            height: calc(70vh - 100px);
+            border-radius: 0.75rem;
+            box-shadow: 0 0 30px rgba(249, 115, 22, 0.1);
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background: #18181b;
+            color: white;
+            border: 1px solid rgba(249, 115, 22, 0.2);
+            border-radius: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .leaflet-popup-tip {
+            background: #18181b;
+        }
+        
+        .trash-marker-icon {
+            background: none;
+            border: none;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+            transition: transform 0.2s;
+        }
+        
+        .trash-marker-icon:hover {
+            transform: scale(1.1);
+        }
+        
+        .leaflet-control-zoom a {
+            background-color: #18181b !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(249, 115, 22, 0.2) !important;
+            border-radius: 0.5rem !important;
+            transition: all 0.2s;
+        }
+        
+        .leaflet-control-zoom a:hover {
+            background-color: #27272a !important;
+            border-color: rgba(249, 115, 22, 0.4) !important;
+        }
+        
+        .leaflet-control-attribution {
+            background-color: rgba(24, 24, 27, 0.9) !important;
+            color: #ffffff !important;
+            border-radius: 0.5rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .leaflet-control-attribution a {
+            color: #f97316 !important;
+            transition: color 0.2s;
+        }
+        
+        .leaflet-control-attribution a:hover {
+            color: #fb923c !important;
+        }
+
+        .legend-container {
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .legend-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(249, 115, 22, 0.15);
+        }
+
+        .btn-primary {
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+        }
+
+        .page-title {
+            text-shadow: 0 2px 10px rgba(249, 115, 22, 0.3);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen font-inter text-white">
+    <div id="loadingScreen">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-orange-500"></div>
+    </div>
+
+    <div id="mainContent">
+        <div class="absolute top-6 right-6 z-10">
+            <button onclick="logout()" class="btn-primary bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg">
+                Déconnexion
+            </button>
+        </div>
+
+        <main class="container mx-auto px-4 py-8 flex-grow">
+            <div class="text-center mb-8">
+                <h1 class="page-title text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600">
+                    Carte des Poubelles
+                </h1>
+            </div>
+
+            <div class="legend-container bg-zinc-900/80 rounded-xl p-6 border border-orange-500/20 shadow-xl mb-8">
+                <div class="flex flex-wrap justify-around gap-6">
+                    <div class="flex items-center space-x-4 transition-transform hover:scale-105">
+                        <svg class="w-10 h-10" stroke="#22c55e" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span class="text-xl font-medium">< 50% - Peu remplie</span>
+                    </div>
+                    <div class="flex items-center space-x-4 transition-transform hover:scale-105">
+                        <svg class="w-10 h-10" stroke="#f97316" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span class="text-xl font-medium">50-70% - Moyen</span>
+                    </div>
+                    <div class="flex items-center space-x-4 transition-transform hover:scale-105">
+                        <svg class="w-10 h-10" stroke="#ef4444" fill="none" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span class="text-xl font-medium">> 70% - Presque pleine</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900/80 rounded-xl border border-orange-500/20 shadow-2xl overflow-hidden transition-all hover:shadow-orange-500/10">
+                <div id="map" class="w-full"></div>
+            </div>
+
+            <div class="w-full flex justify-center mt-8">
+                <button onclick="window.history.back()" class="btn-primary bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 px-8 rounded-lg shadow-lg">
+                    Retour
+                </button>
+            </div>
+        </main>
+    </div>
+
+   <script>
+       async function fetchWithAuth(url, options = {}) {
+           const token = localStorage.getItem('token');
+           if (!token) {
+               window.location.href = '/login';
+               return;
+           }
+
+           const defaultOptions = {
+               headers: {
+                   'Authorization': `Bearer ${token}`,
+                   'Content-Type': 'application/json',
+               }
+           };
+
+           const response = await fetch(url, { ...defaultOptions, ...options });
+           
+           if (response.status === 401) {
+               localStorage.removeItem('token');
+               localStorage.removeItem('isLoggedIn');
+               window.location.href = '/login';
+               return;
+           }
+
+           return response;
+       }
+
+       async function getUserByToken() {
+           try {
+               const response = await fetchWithAuth('http://localhost:1337/api/get_user_by_token');
+               return await response.json();
+           } catch (error) {
+               console.error('Erreur:', error);
+               return null;
+           }
+       }
+
+       let map;
+
+       function initMap() {
+           map = L.map('map').setView([48.8566, 2.3522], 13);
+           
+           L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+               subdomains: 'abcd',
+               maxZoom: 19
+           }).addTo(map);
+       }
+
+       function createTrashIcon(volume) {
+           let color;
+           if (volume < 50) {
+               color = "#22c55e";
+           } else if (volume >= 50 && volume <= 70) {
+               color = "#f97316";
+           } else {
+               color = "#ef4444";
+           }
+
+           return L.divIcon({
+               html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="${color}">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                     </svg>`,
+               className: 'trash-marker-icon',
+               iconSize: [32, 32],
+               iconAnchor: [16, 32],
+               popupAnchor: [0, -32]
+           });
+       }
+
+       async function addMarker(idPoubelle) {
+           try {
+               const response = await fetchWithAuth(`http://localhost:1337/api/get_poubelle_coords/${idPoubelle}`);
+               const data = await response.json();
+               const lat = data.x;
+               const lon = data.y;
+               const poubelleResponse = await fetchWithAuth(`http://localhost:1337/api/get_poubelle/${idPoubelle}`);
+               const poubelleData = await poubelleResponse.json();
+               const volume = poubelleData[0].volume;
+               const temperature = poubelleData[0].temperature;
+               const poids = poubelleData[0].poids;
+               const quartier = poubelleData[0].id_quartier;
+
+               if (lat && lon) {
+                   const marker = L.marker([lat, lon], { icon: createTrashIcon(volume) }).addTo(map)
+                       .bindPopup(`
+                           <div class="font-inter">
+                               <div class="text-orange-400 font-bold mb-2">Poubelle ${idPoubelle}</div>
+                               <div class="text-gray-200">Volume : ${volume} %</div>
+                               <div class="text-gray-200">Température : ${temperature} °C</div>
+                               <div class="text-gray-200">Poids : ${poids} kg</div>
+                               <div class="text-gray-200">Quartier : ${quartier}</div>
+                           </div>
+                       `);
+               }
+           } catch (error) {
+               console.error('Erreur lors de la récupération des informations de la poubelle', error);
+           }
+       }
+
+       async function loadPoubelles() {
+           try {
+               const response = await fetchWithAuth('http://localhost:1337/api/get_poubelles');
+               const data = await response.json();
+               data.forEach(poubelle => {
+                   addMarker(poubelle.id_poubelle);
+               });
+           } catch (error) {
+               console.error('Erreur lors de la récupération des poubelles', error);
+           }
+       }
+
+       async function logout() {
+           try {
+               await fetchWithAuth('http://localhost:1337/api/logout', { method: 'POST' });
+           } catch (error) {
+               console.error(error);
+           } finally {
+               localStorage.removeItem('token');
+               localStorage.removeItem('isLoggedIn');
+               window.location.href = '/login';
+           }
+       }
+
+       if (!localStorage.getItem('token')) {
+           window.location.href = '/login';
+       }
+
+       window.onload = async () => {
+           const userData = await getUserByToken();
+           if (!userData) {
+               window.location.href = '/login';
+               return;
+           }
+
+           await loadPoubelles();
+           
+           document.getElementById('loadingScreen').style.display = 'none';
+           document.getElementById('mainContent').style.display = 'block';
+
+           initMap();
+       };
+   </script>
+</body>
+</html>
