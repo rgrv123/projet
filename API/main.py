@@ -8,7 +8,9 @@ import bcrypt
 import secrets
 from functools import wraps
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": ["http://127.0.0.1", "http://127.0.0.1:80", "http://localhost", 
                                             "http://localhost:80", "http://127.0.0.1:1337", "http://localhost:1337"],
@@ -16,10 +18,10 @@ CORS(app, resources={r"/api/*": {"origins": ["http://127.0.0.1", "http://127.0.0
                                 "allow_headers": ["Content-Type", "Authorization"]}})
 
 db_config = {
-    "host": "localhost",  
-    "user": "root",      
-    "password": "",  
-    "database": "projet"
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "user": os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD", ""),
+    "database": os.environ.get("DB_NAME", "projet")
 }
 
 limiter = Limiter(
